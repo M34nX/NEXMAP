@@ -1,7 +1,13 @@
-"""Strict validation for private IPv4 targets and bounded TCP port lists."""
+"""Strict validation for RFC1918 IPv4 targets and bounded TCP port lists."""
 from __future__ import annotations
 
 import ipaddress
+
+RFC1918 = tuple(ipaddress.ip_network(value) for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+
+
+def _is_rfc1918(address: ipaddress.IPv4Address) -> bool:
+    return any(address in network for network in RFC1918)
 
 
 def parse_private_target(value: str) -> ipaddress.IPv4Address:
@@ -9,8 +15,8 @@ def parse_private_target(value: str) -> ipaddress.IPv4Address:
         address = ipaddress.ip_address(value.strip())
     except ValueError as exc:
         raise ValueError("Target must be a valid IPv4 address.") from exc
-    if not isinstance(address, ipaddress.IPv4Address) or not address.is_private or address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified:
-        raise ValueError("Only private, unicast IPv4 targets are allowed.")
+    if not isinstance(address, ipaddress.IPv4Address) or not _is_rfc1918(address):
+        raise ValueError("Only RFC1918 private IPv4 targets are allowed.")
     return address
 
 
@@ -22,10 +28,12 @@ def parse_local_network(value: str, local_ip: str) -> ipaddress.IPv4Network:
         raise ValueError("Enter a valid IPv4 CIDR network.") from exc
     if not isinstance(network, ipaddress.IPv4Network) or not isinstance(local, ipaddress.IPv4Address):
         raise ValueError("Only IPv4 networks are supported.")
-    if not network.is_private or network.num_addresses > 256:
-        raise ValueError("Network must be private and contain no more than 256 addresses.")
-    if local not in network:
-        raise ValueError("The target network must contain this device's detected local IPv4 address.")
+    if not any(network.subnet_of(private) for private in RFC1918):
+        raise ValueError("The target must be inside an RFC1918 private IPv4 range.")
+    if network.num_addresses > 256:
+        raise ValueError("Network must contain no more than 256 addresses.")
+    if not _is_rfc1918(local) or local not in network:
+        raise ValueError("The target network must contain this device's detected RFC1918 local IPv4 address.")
     return network
 
 
