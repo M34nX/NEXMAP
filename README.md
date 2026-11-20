@@ -1,82 +1,58 @@
 # NEXMAP
-**Next Generation Network Mapping**  
-*Discover. Analyze. Secure.*
+**Next Generation Network Mapping** — *Discover. Analyze. Secure.*
 
-NEXMAP is a lightweight, modular Python network visibility and security-assessment project for Termux (Android) and Linux.
+NEXMAP is a lightweight Python CLI for conservative network visibility on Termux and Linux. It uses only the Python standard library.
 
-> **Development status:** Version 1.0.0 is being developed in stages. This branch completes **Stage 1 (project scaffold)** only. Network discovery, port analysis, service identification, diagnostics, security assessment, and reporting are not implemented yet.
+## Current status — v1.0.0 Stage 2
+Implemented:
+- CLI commands: `info`, `discover`, and `ports`.
+- Local IPv4 detection using the OS routing table (no data payload is sent).
+- Private IPv4 target validation; public IP targets and IPv6 are rejected.
+- Local discovery requires the supplied private CIDR to contain the device's detected local IPv4 address and be no larger than 256 addresses.
+- Discovery checks TCP ports 80 and 443 only, with a maximum of 16 concurrent workers.
+- Single-host TCP checks accept at most 32 explicitly selected ports.
+- Explicit confirmation is required before every active check.
+- Optional JSON reports for TCP port checks.
 
-## Project goals
-- Provide useful, evidence-based network visibility for systems and networks the operator is authorized to assess.
-- Run without assuming root privileges.
-- Keep dependencies and resource use low for Termux and Linux.
-- Separate interface, network operations, analysis, validation, and reporting.
-- Use conservative limits, explicit target confirmation, and safe defaults.
-- Never claim a vulnerability based on insufficient evidence.
+Not implemented yet: UDP scanning, OS fingerprinting, broad service fingerprinting, vulnerability exploitation, credential checks, or stealth features. A host that does not answer on TCP 80/443 may still be online.
 
-## Architecture
-```text
-NEXMAP/
-├── main.py
-├── requirements.txt
-├── README.md
-├── LICENSE
-├── .gitignore
-├── config/settings.json
-├── core/{__init__.py, scanner.py, network.py, analyzer.py, reporter.py}
-├── modules/{__init__.py, discovery.py, port_analysis.py, service_detection.py, security_audit.py}
-├── interface/{__init__.py, banner.py, menu.py}
-├── reports/.gitkeep
-├── tests/{__init__.py, test_structure.py}
-└── utils/{__init__.py, validators.py, logger.py}
-```
-
-## Development stages
-1. **Stage 1 — Project structure:** package layout, configuration baseline, documentation, and scaffold test.
-2. **Stage 2 — Terminal interface:** consistent CLI, banner, menu, and input handling.
-3. **Stage 3 — Network diagnostics:** interfaces, addresses, DNS, and connectivity information.
-4. **Stage 4 — Authorized discovery:** conservative discovery on explicitly authorized local networks.
-5. **Stage 5 — Port and service analysis:** bounded TCP checks and evidence-based service identification.
-6. **Stage 6 — Security assessment:** explainable configuration checks and recommendations.
-7. **Stage 7 — Reporting:** timestamped TXT and JSON reports.
-8. **Stage 8 — Validation and optimization:** automated tests and Termux/Linux compatibility checks.
-
-## Requirements
-- Python 3.10 or newer (target baseline; compatibility will be verified during implementation).
-- Stage 1 uses only the Python standard library.
-- No root access is required for the project scaffold.
-
-## Installation
-### Termux
+## Install on Termux
 ```bash
 pkg update
 pkg install python git
 git clone https://github.com/M34nX/NEXMAP.git
 cd NEXMAP
-git checkout v1.0.0-stage-1
-python main.py
+git checkout v1.0.0-stage-2
+python main.py --help
 ```
 
-### Linux
+No pip packages and no root access are required.
+
+## Usage
+Show local IPv4 information:
 ```bash
-sudo apt update
-sudo apt install python3 git
-git clone https://github.com/M34nX/NEXMAP.git
-cd NEXMAP
-git checkout v1.0.0-stage-1
-python3 main.py
+python main.py info
 ```
 
-The current entry point intentionally reports that implementation is pending. It is not a working scanner yet.
+Discover responsive web endpoints on your own local subnet (replace the example with your actual private CIDR):
+```bash
+python main.py discover --target 192.168.1.0/24
+```
+The CIDR must contain the device's detected local IPv4 address and may contain at most 256 addresses. Type `DISCOVER` at the prompt to confirm authorization.
+
+Check selected TCP ports on one private host:
+```bash
+python main.py ports --target 192.168.1.1 --ports 22,53,80,443
+```
+Type `SCAN` at the prompt to confirm authorization. Add `--save` to write a JSON report to `reports/`.
 
 ## Tests
-Run from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-## Authorization and safe use
-Future active network checks are intended only for systems and networks for which the operator has explicit permission. The implementation must reject public-range targets by default, require clear confirmation, apply conservative limits, and avoid exploitation, credential theft, persistence, stealth, and evasion.
+## Safety
+Use only on devices and networks you own or have explicit permission to assess. NEXMAP rejects public-range targets, limits discovery scope and concurrency, and requires an explicit confirmation phrase. TCP connect results can be affected by firewalls and filtering; they are not proof that a device is offline or vulnerable.
 
 ## License
-MIT. See [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
