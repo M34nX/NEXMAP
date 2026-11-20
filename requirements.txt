@@ -1,0 +1,2 @@
+# NEXMAP 1.0.0 — Stage 1
+# No third-party dependencies are required for the project scaffold.
