@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sys
-from pathlib import Path
 
-from core.network import get_local_ipv4
+from core.network import get_local_ipv4, get_local_network
 from core.reporter import save_report
 from modules.discovery import discover_hosts
 from modules.port_analysis import scan_tcp_ports
@@ -23,9 +21,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"NEXMAP {VERSION}")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("info", help="show local IPv4 information")
-    discover = sub.add_parser("discover", help="check a small private IPv4 subnet for responsive hosts")
-    discover.add_argument("--target", required=True, help="private IPv4 CIDR, e.g. 192.168.1.0/24")
+    sub.add_parser("info", help="show local IPv4 and detected network information")
+    discover = sub.add_parser("discover", help="check a small private local subnet for responsive hosts")
+    discover.add_argument("--target", help="optional private IPv4 CIDR; auto-detected if omitted")
     ports = sub.add_parser("ports", help="check selected TCP ports on one private host")
     ports.add_argument("--target", required=True, help="private IPv4 address")
     ports.add_argument("--ports", default="22,53,80,443,445,8080", help="comma-separated TCP ports (max 32)")
@@ -36,9 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     local_ip = get_local_ipv4()
+    local_network = get_local_network()
     if args.command == "info":
         print(f"NEXMAP {VERSION}")
         print(f"Detected local IPv4: {local_ip or 'unavailable'}")
+        print(f"Detected local network: {local_network or 'unavailable'}")
         print("Active scanning: disabled until a command and target are explicitly supplied.")
         return 0
 
@@ -47,8 +47,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.command == "discover":
+        requested = args.target or (str(local_network) if local_network else None)
+        if not requested:
+            print("Error: automatic subnet detection failed. Supply --target with your private local CIDR.", file=sys.stderr)
+            return 2
         try:
-            network = parse_local_network(args.target, local_ip)
+            network = parse_local_network(requested, local_ip)
         except ValueError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 2
