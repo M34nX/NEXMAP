@@ -1,0 +1,20 @@
+{
+  "project": {
+    "name": "NEXMAP",
+    "full_name": "Next Generation Network Mapping",
+    "version": "1.0.0",
+    "slogan": "Discover. Analyze. Secure."
+  },
+  "runtime": {
+    "log_level": "INFO",
+    "report_directory": "reports"
+  },
+  "safety": {
+    "require_explicit_target_confirmation": true,
+    "allow_public_ip_targets": false,
+    "max_hosts_per_discovery": 256,
+    "max_tcp_ports_per_run": 128,
+    "connect_timeout_seconds": 1.5,
+    "max_concurrent_connections": 32
+  }
+}
